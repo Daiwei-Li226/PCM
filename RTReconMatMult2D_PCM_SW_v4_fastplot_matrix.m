@@ -5,20 +5,19 @@ function RTReconMatMult2D_PCM_SW_v4_fastplot_matrix(ReceiveData)
 % Change the way to show MAP to get fast
 
 % persistent 
-global frameCount GPU sensarr gmul_mat mult_mat area1 temperature_C delay_t travelingTime reconTime startIdx PCM_img max_frame temp_img XYMAP XZMAP CoordinatesSavedir map_buffer hPlot hImg1 hImg2 firstMAP move
+global frameCount GPU sensarr gmul_mat mult_mat area1 temperature_C delay_t travelingTime reconTime startIdx PCM_img max_frame temp_img XYMAP XZMAP CoordinatesSavedir map_buffer hPlot hImg1 hImg2 firstMAP 
 
 tic
-
 
 T = temperature_C;
 sos = 1402.4+5.01*T-0.055*T^2+0.00022*T^3;
 sos = sos*1e-3;
 
-
 % Save an empty coordiantes file for frame #1 
 if isempty(frameCount)
 a = [0,0,0,0];
-CoordinatesSavedir = 'C:\Davia\20260204_Random\2_PCM\';   %'C:\Users\PI-Lab\Desktop\PyDobot\';
+global a
+CoordinatesSavedir = 'C:\Davia\';   %'C:\Users\PI-Lab\Desktop\PyDobot\';
 CoordinatesSavename = [CoordinatesSavedir,'coordinates.mat'];
 save(CoordinatesSavename,'a')
 else 
@@ -31,17 +30,22 @@ Receive = evalin('base','Receive');
 
 % determine startIdx
 fs = Receive(1).decimSampleRate;
-reconStep = 900;
+reconStep = 950;
 travelingTime = 40/1.5*fs;
-peak = find(RFData(:,1) > 300, 1);  %5mhz,20mm 120,3000
-startIdx = round(peak-250 - travelingTime);  %-100;300 steps
-if isempty(peak)
-   startIdx = 7500;
-disp(['NO Peak!'])
+%  peak = find(RFData(:,120) > 250, 1);
+ [peak,Index] = max(RFData(:,120));
+%  Index = find(RFData(:,120) > 4000, 1);
+if startIdx > travelingTime
+startIdx = round(Index - travelingTime);  %-100;300 steps 
+else
+    startIdx =1;
 end
-% endIdx = startIdx + reconStep;
-% step = 6; % 0.064 us per step
-step = 6; % 0.064 us per step
+% if isempty(peak)
+%    startIdx = 7500;
+% disp(['NO Peak!'])
+% end
+
+step = 5; % 0.064 us per step
 reconTime = 0:step:reconStep;
 
 rfdata = RFData(startIdx:startIdx+1000,:,:);   % only 1001 points for rfdata
@@ -91,8 +95,12 @@ y = zeros(1, size(reconTime,2));
 img_data1 = zeros(size(area1.x_arr,1), size(area1.y_arr,1));  
 img_data2 = zeros(size(area1.x_arr,1), size(area1.z_arr,1));  
 figure(2); hPlot = plot(y);
-figure(3); hImg1 = imshow(img_data1, [], 'Colormap', hot, 'InitialMagnification', 'fit');title('Top MAP (XY)');
-figure(4); hImg2 = imshow(img_data2, [], 'Colormap', hot, 'InitialMagnification', 'fit');title('Side MAP (XZ)');
+figure(3);   % hImg1 = imshow(img_data1, [],'Colormap', hot, 'InitialMagnification', 'fit');axis on;xlabel('x');ylabel('y');title('Top MAP (XY)');
+hImg1 = imagesc(area1.x_arr, area1.y_arr, img_data1);  axis image;set(gca, 'YDir', 'normal'); % set y axis upwards
+colormap(hot);xlabel('x(mm)'); ylabel('y(mm)');title('Top MAP (XY)');
+figure(4);  % hImg2 = imshow(img_data2, [],'Colormap', hot, 'InitialMagnification', 'fit');axis on; xlabel('z');ylabel('x');title('Side MAP (XZ)');
+hImg2 = imagesc(area1.z_arr, area1.x_arr, img_data2);  axis image;set(gca, 'YDir', 'normal');
+colormap(hot);xlabel('z(mm)'); ylabel('x(mm)');title('Side MAP (XZ)');
 
 frameCount =1;
 else 
@@ -129,7 +137,7 @@ a = [0,0,0,0];
 a(1) = dx;a(2) = dy; a(4)=frameCount; 
 CoordinatesSavename = [CoordinatesSavedir,'coordinates.mat'];
 save(CoordinatesSavename,'a')
-disp(['saved new coordinates'])
+disp(['saved new coordinates:', num2str(a)])
     end 
 end
 
