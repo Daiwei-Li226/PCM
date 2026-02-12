@@ -12,35 +12,31 @@
 %   transmits with multiple steering angles. All 128 transmit and receive
 %   channels are active for each acquisition. Processing is asynchronous
 %   with respect to acquisition.
-%
-% Last update:
-% 12/13/2015 - modified for SW 3.0
 
 clear all
 close all
 P.startDepth = 0;   % Acquisition depth in wavelengths
 P.endDepth = 150;   % This should preferrably be a multiple of 128 samples.
-% P.endDepth = 300;   % This should preferrably be a multiple of 128 samples.
+% P.endDepth = 300;   
 mediumTemp = 21;
-sos = round(1402.4 + 5.01*mediumTemp - 0.055*mediumTemp^2 + 0.00022*mediumTemp^3);
-frame_num_rcv_yt = 10;
+sos = round(1402.4 + 5.01*mediumTemp - 0.055*mediumTemp^2 + 0.00022*mediumTemp^3);  %m/s
+frame_num_rcv_yt = 10;  % xx frames stored in RcvBuffer.
 frame_num_img_yt = 2; 
 transimpedance = 1000;
-TEST_MODE = 1;
+TEST_MODE = 1;  % 1-realtime display
 
-PW = 1;
+PW = 1;  % Plane Wave
 
 % Compute storage matrix size
 fc = 5.6;
 lambda = sos/(fc*1e6)*1e3; % mm
-AcqDepth = P.endDepth * lambda;
+AcqDepth = P.endDepth * lambda; % mm 
 LateralWidth = 18.9*2;
 DiagDist = sqrt(AcqDepth^2+LateralWidth^2);
 DiagPnts = DiagDist/lambda;
 % DiagPntsSample = round(8*DiagPnts*1.2/2); % used for Resource.RcvBuffer.rowsPerFrame
 % % % % % % DiagPntsSample = 2560; % used for Resource.RcvBuffer.rowsPerFrame
 DiagPntsSample = 128*8; % used for Resource.RcvBuffer.rowsPerFrame   need 3900 pts for 110mm
-
 
 USVolt_yt = 20;
 % TX_ELEMS = 1:256;
@@ -72,7 +68,7 @@ Resource.Parameters.Connector = [1,2];
 %  Resource.Parameters.simulateMode = 2 stops sequence and processes RcvData continuously.
 
 %% Specify Trans structure array.
-para_path = 'C:\Davia\20251125_RT_feedback\';  % Matrix array  -  Vera PC
+para_path = 'C:\Davia\20251125_RT_feedback\';  % load element position files
 load([para_path,'x_trans.mat']);
 load([para_path,'z_trans.mat']);
 load([para_path,'y_trans.mat']);
@@ -136,7 +132,7 @@ Media.function = 'movePoints';
 Resource.RcvBuffer(1).datatype = 'int16';
 Resource.RcvBuffer(1).rowsPerFrame = DiagPntsSample*na*2; % this size allows for maximum range
 Resource.RcvBuffer(1).colsPerFrame = Resource.Parameters.numRcvChannels;
-Resource.RcvBuffer(1).numFrames = frame_num_rcv_yt;    % 30 frames stored in RcvBuffer.
+Resource.RcvBuffer(1).numFrames = frame_num_rcv_yt;    % xx frames stored in RcvBuffer.
 Resource.InterBuffer(1).numFrames = 1;   % one intermediate buffer needed.
 Resource.ImageBuffer(1).numFrames = 1; %frame_num_img_yt;
 z_plane = 100;
