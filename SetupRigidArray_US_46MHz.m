@@ -85,7 +85,7 @@ Trans.impedance = transimpedance;
 % x_trans = reshape(x_trans,1,[]);
 % y_trans = reshape(y_trans,1,[]);
 % z_trans = zeros(size(x_trans));
-para_path = 'C:\Davia\20260204_Random\';  % Matrix array  -  Vera PC
+para_path = 'C:\Davia\20251125_RT_feedback\';  % Matrix array  -  Vera PC
 load([para_path,'x_trans.mat']);
 load([para_path,'z_trans.mat']);
 load([para_path,'y_trans.mat']);
@@ -182,7 +182,8 @@ Resource.DisplayWindow(3).AxesUnits = 'mm';
 
 %% Specify Transmit waveform structure.
 TW(1).type = 'parametric';
-TW(1).Parameters = [Trans.frequency,.67,2,1];
+TW(1).Parameters = [Trans.frequency,.67,1,1]; % [Trans.frequency,.67,1,1]
+TW(1).euqalize = 0;
 
 TX_APOD = zeros(length(TX_ELEMS),Trans.numelements);
 for itx = 1:na

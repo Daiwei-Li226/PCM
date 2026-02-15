@@ -15,17 +15,16 @@
 
 clear all
 close all
-P.startDepth = 0;   % Acquisition depth in wavelengths
-P.endDepth = 150;   % This should preferrably be a multiple of 128 samples.
-% P.endDepth = 300;   
-mediumTemp = 21;
+P.startDepth = 150;   % Acquisition depth in wavelengths
+P.endDepth = 206;   % This should preferrably be a multiple of 128 samples.
+mediumTemp = 25;
 sos = round(1402.4 + 5.01*mediumTemp - 0.055*mediumTemp^2 + 0.00022*mediumTemp^3);  %m/s
-frame_num_rcv_yt = 10;  % xx frames stored in RcvBuffer.
+frame_num_rcv_yt = 6;  % xx frames stored in RcvBuffer.
 frame_num_img_yt = 2; 
 transimpedance = 1000;
 TEST_MODE = 1;  % 1-realtime display
 
-PW = 1;  % Plane Wave
+PW = 0;  % Plane Wave
 
 % Compute storage matrix size
 fc = 5.6;
@@ -42,8 +41,8 @@ USVolt_yt = 20;
 % TX_ELEMS = 1:256;
 TX_ELEMS = [];
 ind = 0;
-for x_line = 1:3:16
-    for y_line = 1:3:16
+for x_line = 1:2:16
+    for y_line = 1:2:16
         ielem = (x_line-1)*16+y_line;
         ind = ind + 1;
         TX_ELEMS(ind) = ielem;
@@ -51,7 +50,12 @@ for x_line = 1:3:16
 end
 
 if PW
-    na = 1;
+% 定义 X 和 Y 方向的角度范围（例如 -3 到 3 度，步长为 3）
+    angleX = linspace(-8, 8, 3) * pi/180; 
+    angleY = linspace(-8, 8, 3) * pi/180;
+    [Xg, Yg] = meshgrid(angleX, angleY);
+    steerList = [Xg(:), Yg(:)]; % 形成 9 个角度组合
+    na = size(steerList, 1);
 else
     na = length(TX_ELEMS);      % Set na = number of angles.
 end
@@ -115,7 +119,7 @@ Theta(51) = 0.0000001;
 Trans.ElementSens = abs(cos(Theta).*(sin(eleWidthWl*pi*sin(Theta))./...
     (eleWidthWl*pi*sin(Theta))));  % set a reasonable high voltage limit.
 % Specify PData structure array.
-PData(1).PDelta = [0.5, 0.5, 0.5];
+PData(1).PDelta = [1.0,1.0,1.0];
 PData(1).Size(3) = ceil((P.endDepth-P.startDepth)/PData(1).PDelta(3)); % startDepth, endDepth and pdelta set PData(1).Size.
 PData(1).Size(2) = ceil((Trans.spacing*(Trans.numelements-0)^0.5)/PData(1).PDelta(2));
 PData(1).Size(1) = PData(1).Size(2);      % single image page
@@ -186,7 +190,8 @@ Resource.DisplayWindow(3).AxesUnits = 'mm';
 Resource.DisplayWindow(3).mode = '2d';
 %% Specify Transmit waveform structure.
 TW(1).type = 'parametric';
-TW(1).Parameters = [Trans.frequency,.67,2,1];
+TW(1).Parameters = [Trans.frequency,.67,1,1]; % [Trans.frequency,.67,1,1]
+TW(1).euqalize = 0;
 
 if PW
     TX_APOD = ones(1,Trans.numelements);
@@ -205,9 +210,14 @@ TX = repmat(struct('waveform', 1, ...
                    'Delay', zeros(1,Trans.numelements)), 1, na);
 % - Set event specific TX attributes.
 for n = 1:na   % na transmit events
+    % No steering:
     TX(n).Steer = [0.0,0.0];
     TX(n).Delay = computeTXDelays(TX(n));
     TX(n).Apod = TX_APOD(n,:);
+%     % Add steering:
+%     TX(n).Steer = steerList(n, :);
+%     TX(n).Apod = ones(1, 256); % plane wave with all element transmission
+%     TX(n).Delay = computeTXDelays(TX(n));
 end
 %%
 TPC(1).name = '2D';
@@ -215,7 +225,7 @@ TPC(1).maxHighVoltage = 40;
 TPC(1).hv = USVolt_yt;
 %% Specify TGC Waveform structure.
 % TGC.CntrlPts = [0,141,275,404,510,603,702,782];
-TGC.CntrlPts = [100,100,100,100,100,100,100,100];
+TGC.CntrlPts = [0,0,100,100,100,100,100,100];
 TGC.rangeMax = P.endDepth;
 TGC.Waveform = computeTGCWaveform(TGC);
 
@@ -244,7 +254,7 @@ end
 
 % Specify Recon structure arrays.
 % - We need one Recon structures which will be used for each frame.
-Recon = struct('senscutoff', 0.6, ...
+Recon = struct('senscutoff', 0.35, ...   %0.6
                'pdatanum', 1, ...
                'rcvBufFrame',-1, ...
                'IntBufDest', [1,1], ...
@@ -336,8 +346,7 @@ Process(4).Parameters = {'srcbuffer', 'image', ... % 源数据是 ImageBuffer
 SeqControl(1).command = 'jump'; % jump back to start
 SeqControl(1).argument = 1;
 SeqControl(2).command = 'timeToNextAcq';  % time between synthetic aperture acquisitions
-% SeqControl(2).argument = 900;  % 160 usec
-SeqControl(2).argument = 150;  % 160 usec
+SeqControl(2).argument = 5000;  % 150 usec
 SeqControl(3).command = 'timeToNextAcq';  % time between frames
 % SeqControl(3).argument = 40000 - (na-1)*200;  % 20 msec
 % SeqControl(3).argument = 20000;  % 20 msec
@@ -383,7 +392,7 @@ for i = 1:Resource.RcvBuffer(1).numFrames
     nsc = nsc+1;
     n = n + 1;
     
-    if TEST_MODE
+    if TEST_MODE && mod(i, 5) == 0
 %         Event(n).info = 'recon and process';
 %         Event(n).tx = 0;
 %         Event(n).rcv = 0;
@@ -409,12 +418,12 @@ for i = 1:Resource.RcvBuffer(1).numFrames
         n = n + 1;
 
         % 替换原有 Event(n).process = 3 的事件，改为 Process(4)
-Event(n).info    = 'Perform custom XY image display.';
-Event(n).tx      = 0;
-Event(n).rcv     = 0;
-Event(n).recon   = 0;
-Event(n).process = 4; % <-- 引用新的 Process(4)
-Event(n).seqControl = 0;
+        Event(n).info    = 'Perform custom XY image display.';
+        Event(n).tx      = 0;
+        Event(n).rcv     = 0;
+        Event(n).recon   = 0;
+        Event(n).process = 4; % <-- 引用新的 Process(4)
+        Event(n).seqControl = 0;
         n = n + 1;
     end
 
@@ -469,7 +478,7 @@ UI(2).Callback = text2cell('%RangeChangeCallback');
 frameRateFactor = 5;
 
 %% Save all the structures to a .mat file.
-save('MatFiles/Soft2DArray');
+save('MatFiles/Rigid2DArray');
 % VSX
 
 return
@@ -515,6 +524,7 @@ Receive = evalin('base', 'Receive');
 maxAcqLength = ceil(sqrt(P.endDepth^2 + ((Trans.numelements-1)*Trans.spacing)^2));
 for i = 1:size(Receive,2)
     Receive(i).endDepth = maxAcqLength;
+    Receive(i).endDepth = P.endDepth + 20;
 end
 assignin('base','Receive',Receive);
 evalin('base','TGC.rangeMax = P.endDepth;');

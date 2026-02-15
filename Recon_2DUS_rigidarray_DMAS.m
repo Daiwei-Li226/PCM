@@ -4,7 +4,7 @@ reset(g);
 % 
 dirName = 'C:\Users\daiwe\Dropbox\CavitationMapping_2024_Davia_Chaorui\20260204_Random\3_USphantom\';
 fileName = 't1__US.mat';
-saving_path = [dirName,'DMAS_Results',filesep];
+saving_path = [dirName,'DMAS_Results_z90_largeFOV',filesep];
 if ~exist(saving_path, 'dir')
     mkdir(saving_path)
 end
@@ -17,15 +17,15 @@ Trans.elementWidth = 0.5; %0.5;    %1;
 Trans.numelements = 256;
 Res = 0.12*2;
 Res = 0.3;
-x_range = [-20,20];
-y_range = [-20,20];
-z_range = [30,120];
+x_range = [-30,30];
+y_range = [-30,30];
+z_range = [85,100];
 x_img = x_range(1):Res:x_range(2);
 y_img = y_range(1):Res:y_range(2);
 z_img = z_range(1):Res:z_range(2);
 
 %% reading sensor location; unit: mm
-temperature_c= 21;
+temperature_c= 25;
 sos= (1402.4+5.01*temperature_c-0.055*temperature_c^2+0.00022*temperature_c^3);
 fs = Receive(1).decimSampleRate*1e6;
 
@@ -182,9 +182,9 @@ pbaspect([length(x_img)/length(z_img) 1 1]),xlabel('x [mm]'),ylabel('z [mm]'), t
 drawnow
 
 vol_to_plot2 = us_rec_DAS;
-xymap2 = squeeze(max(abs(mean(vol_to_plot2(:,:,0:250,:),4)),[],3))';
-xzmap2 = squeeze(max(abs(mean(vol_to_plot2(:,:,200:250,:),4)),[],1))';
-yzmap2 = squeeze(max(abs(mean(vol_to_plot2(:,:,200:250,:),4)),[],2))';
+xymap2 = squeeze(max(abs(mean(vol_to_plot2(:,:,:,:),4)),[],3))';
+xzmap2 = squeeze(max(abs(mean(vol_to_plot2(:,:,:,:),4)),[],1))';
+yzmap2 = squeeze(max(abs(mean(vol_to_plot2(:,:,:,:),4)),[],2))';
 
 fig2 = figure();
 subplot(1,3,1),imagesc(x_img,y_img,20*log10(xymap2/max(xymap2(:))))
